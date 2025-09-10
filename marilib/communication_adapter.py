@@ -11,7 +11,8 @@ from marilib.serial_hdlc import (
     HDLCState,
     hdlc_encode,
 )
-from marilib.serial_uart import SerialInterface, SERIAL_DEFAULT_BAUDRATE
+# from marilib.serial_uart import SerialInterface, SERIAL_DEFAULT_BAUDRATE
+from marilib.serial_happy import SerialInterfaceHappy, SERIAL_DEFAULT_BAUDRATE
 
 
 class CommunicationAdapterBase(ABC):
@@ -44,9 +45,12 @@ class SerialAdapter(CommunicationAdapterBase):
             except HDLCDecodeException as e:
                 print(f"Error decoding payload: {e}")
 
+    def on_data_received(self, data):
+        self.on_data_received(data)
+
     def init(self, on_data_received: callable):
         self.on_data_received = on_data_received
-        self.serial = SerialInterface(self.port, self.baudrate, self.on_byte_received)
+        self.serial = SerialInterfaceHappy(self.port, self.baudrate, self.on_data_received)
         print(f"[yellow]Connected to serial port {self.port} at {self.baudrate} baud[/]")
 
     def close(self):
@@ -54,9 +58,10 @@ class SerialAdapter(CommunicationAdapterBase):
 
     def send_data(self, data):
         with self.serial.lock:  # Use the existing lock for thread safety
-            self.serial.serial.flush()
-            encoded = hdlc_encode(data)
-            self.serial.write(encoded)
+            # self.serial.serial.flush()
+            # encoded = hdlc_encode(data)
+            # self.serial.write(encoded)
+            self.serial.write(data)
 
 
 class MQTTAdapter(CommunicationAdapterBase):

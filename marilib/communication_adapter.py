@@ -62,7 +62,15 @@ class SerialAdapter(CommunicationAdapterBase):
 class MQTTAdapter(CommunicationAdapterBase):
     """Class used to interface with MQTT."""
 
-    def __init__(self, host, port, is_edge: bool, use_tls: bool = False):
+    def __init__(
+        self,
+        host,
+        port,
+        is_edge: bool,
+        use_tls: bool = False,
+        username: str = None,
+        password: str = None,
+    ):
         self.host = host
         self.port = port
         self.is_edge = is_edge
@@ -70,18 +78,36 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client = None
         self.on_data_received = None
         self.use_tls = use_tls
+        self.username = username
+        self.password = password
         # optimize qos for throughput
         # 0 = no delivery guarantee, 1 = at least once, 2 = exactly once
         self.qos = 0
 
     @classmethod
     def from_url(cls, url: str, is_edge: bool):
-        url = urlparse(url)
-        host, port = url.netloc.split(":")
-        if url.scheme == "mqtt":
-            return cls(host, int(port), is_edge, use_tls=False)
-        elif url.scheme == "mqtts":
-            return cls(host, int(port), is_edge, use_tls=True)
+        parsed_url = urlparse(url)
+
+        # Extract username and password from URL if present
+        username = parsed_url.username
+        password = parsed_url.password
+
+        # Handle host:port parsing
+        if ":" in parsed_url.netloc:
+            # Remove username:password@ prefix if present
+            netloc = parsed_url.netloc
+            if "@" in netloc:
+                netloc = netloc.split("@")[1]
+            host, port = netloc.split(":")
+        else:
+            raise ValueError(f"Port must be specified in URL: {url}")
+
+        if parsed_url.scheme == "mqtt":
+            return cls(
+                host, int(port), is_edge, use_tls=False, username=username, password=password
+            )
+        elif parsed_url.scheme == "mqtts":
+            return cls(host, int(port), is_edge, use_tls=True, username=username, password=password)
         else:
             raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
 
@@ -125,6 +151,11 @@ class MQTTAdapter(CommunicationAdapterBase):
         )
         if self.use_tls:
             self.client.tls_set_context(context=None)
+
+        # Set username and password if provided
+        if self.username is not None:
+            self.client.username_pw_set(self.username, self.password)
+
         self.client.on_log = self._on_log
         self.client.on_connect = self._on_connect_edge if self.is_edge else self._on_connect_cloud
         self.client.on_message = self._on_message_edge if self.is_edge else self._on_message_cloud

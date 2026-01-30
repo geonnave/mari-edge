@@ -47,3 +47,5 @@ logs
 
 # MacOS files
 .DS_Store
+
+*.zip

@@ -72,6 +72,20 @@ class MarilibTUICloud(MarilibTUI):
         status.append("  |  ")
         status.append("Nodes: ", style="bold cyan")
         status.append(f"{len(mari.nodes)}")
+        status.append("  |  ")
+        gateways = list(mari.gateways.values())
+        if gateways:
+            avg_radio_pdr_down = sum(
+                g.stats_avg_pdr_downlink_radio() for g in gateways
+            ) / len(gateways)
+            avg_radio_pdr_up = sum(
+                g.stats_avg_pdr_uplink_radio() for g in gateways
+            ) / len(gateways)
+            status.append("Radio PDR: ", style="bold cyan")
+            status.append(f"↓ {avg_radio_pdr_down:.1%} ↑ {avg_radio_pdr_up:.1%}")
+        else:
+            status.append("Radio PDR: ", style="bold cyan")
+            status.append("—")
 
         return Panel(status, title="[bold]MarilibCloud Status", border_style="blue")
 
